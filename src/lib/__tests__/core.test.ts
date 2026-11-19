@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exportCliReportToCsv, parseCliReportJson } from '../cliImport';
 import { decodeDnsResponse, encodeDnsQuery, toBase64Url } from '../dnsPacket';
 import { getSetupAddresses } from '../dnsSetupAddresses';
 import { encodeShareHash, decodeShareHash } from '../exportShare';
@@ -268,5 +269,36 @@ describe('getSetupAddresses', () => {
     const ag = getSetupAddresses(baseResult('adguard-default', 'AdGuard DNS', 'Blokir Iklan'));
     expect(ag.androidDot).toBe('dns.adguard-dns.com');
     expect(ag.ipv4).toContain('94.140.14.14');
+  });
+});
+
+describe('cliImport', () => {
+  it('parses CLI JSON even with leading npm notice text or BOM and sanitizes NextDNS ID', () => {
+    const raw = `\uFEFFnpm notice run cli\n${JSON.stringify({
+      systemDns: { servers: [], medianMs: 16.5, successPct: 100 },
+      port53Check: { hijacked: true, udpIdServer: 'isp-proxy', dotIdServer: 'cgk02' },
+      results: [
+        { protocol: 'DoH', name: 'Google DNS', medianMs: 27.5, successPct: 100 },
+        { protocol: 'DoT/853', name: 'Cloudflare 1.1.1.1', medianMs: 8.1, successPct: 100 },
+      ],
+      adblockCheck: [
+        { name: 'NextDNS (a1b2c3)', domain: 'pagead2.googlesyndication.com', blocked: true },
+      ],
+    })}`;
+
+    const parsed = parseCliReportJson(raw);
+    expect(parsed.ok).toBe(true);
+    if (parsed.ok) {
+      expect(parsed.report.results[0].name).toBe('Cloudflare 1.1.1.1');
+      expect(parsed.report.port53Check.hijacked).toBe(true);
+      expect(parsed.report.adblockCheck[0].name).toBe('NextDNS');
+      const csv = exportCliReportToCsv(parsed.report);
+      expect(csv).toContain('Cloudflare 1.1.1.1,DoT/853,8.1,100');
+    }
+  });
+
+  it('rejects invalid CLI JSON cleanly', () => {
+    expect(parseCliReportJson('not json').ok).toBe(false);
+    expect(parseCliReportJson('{}').ok).toBe(false);
   });
 });

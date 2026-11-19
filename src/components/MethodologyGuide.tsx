@@ -3,11 +3,12 @@ import { useState } from 'react';
 
 interface MethodologyGuideProps {
   isDark: boolean;
+  onOpenCliTab?: () => void;
 }
 
 type OsTab = 'android' | 'ios' | 'windows' | 'macos' | 'router';
 
-export function MethodologyGuide({ isDark }: MethodologyGuideProps) {
+export function MethodologyGuide({ isDark, onOpenCliTab }: MethodologyGuideProps) {
   const [osTab, setOsTab] = useState<OsTab>('android');
   const [showTech, setShowTech] = useState(false);
   const [copiedCli, setCopiedCli] = useState(false);
@@ -15,7 +16,7 @@ export function MethodologyGuide({ isDark }: MethodologyGuideProps) {
   const surface = isDark ? 'bg-[#1c1c1e]' : 'bg-[#f5f5f7]';
   const muted = isDark ? 'text-[#86868b]' : 'text-[#6e6e73]';
 
-  const cliCommand = 'npm run cli';
+  const cliCommand = 'node cli/dnslytics.mjs --out hasil-cli.json';
 
   const handleCopyCli = async () => {
     try {
@@ -179,7 +180,7 @@ export function MethodologyGuide({ isDark }: MethodologyGuideProps) {
             isDark ? 'bg-black/50 text-[#f5f5f7]' : 'bg-white text-[#1d1d1f]'
           }`}
         >
-          <span>{cliCommand} -- --nextdns a1b2c3</span>
+          <span>{cliCommand}</span>
           <button
             type="button"
             onClick={handleCopyCli}
@@ -202,6 +203,18 @@ export function MethodologyGuide({ isDark }: MethodologyGuideProps) {
             )}
           </button>
         </div>
+
+        {onOpenCliTab && (
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={onOpenCliTab}
+              className="rounded-full bg-[#0a84ff] px-4 py-1.5 text-xs font-medium text-white transition hover:opacity-90"
+            >
+              Buka Panduan &amp; Impor Hasil CLI (.json)
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Optional technical details collapsed */}

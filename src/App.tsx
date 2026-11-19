@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CliVisualizer } from './components/CliVisualizer';
 import { Header, type AppTab } from './components/Header';
 import { HistoryView } from './components/HistoryView';
 import { MethodologyGuide } from './components/MethodologyGuide';
@@ -477,6 +478,13 @@ export function App() {
           </>
         )}
 
+        {activeTab === 'cli' && (
+          <CliVisualizer
+            defaultNextDnsId={config.nextDnsConfigId}
+            isDark={isDark}
+          />
+        )}
+
         {activeTab === 'history' && (
           <HistoryView
             history={history}
@@ -495,7 +503,12 @@ export function App() {
           />
         )}
 
-        {activeTab === 'guide' && <MethodologyGuide isDark={isDark} />}
+        {activeTab === 'guide' && (
+          <MethodologyGuide
+            isDark={isDark}
+            onOpenCliTab={() => setActiveTab('cli')}
+          />
+        )}
       </main>
 
       <footer

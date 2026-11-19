@@ -1,6 +1,6 @@
 import { Moon, Sun } from 'lucide-react';
 
-export type AppTab = 'benchmark' | 'history' | 'guide';
+export type AppTab = 'benchmark' | 'cli' | 'history' | 'guide';
 
 interface HeaderProps {
   activeTab: AppTab;
@@ -21,6 +21,7 @@ export function Header({
 
   const navItems: Array<{ id: AppTab; label: string }> = [
     { id: 'benchmark', label: 'Benchmark' },
+    { id: 'cli', label: 'CLI' },
     { id: 'history', label: historyCount > 0 ? `Riwayat (${historyCount})` : 'Riwayat' },
     { id: 'guide', label: 'Panduan' },
   ];

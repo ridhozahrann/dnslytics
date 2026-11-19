@@ -2,6 +2,7 @@
 import { randomBytes } from 'node:crypto';
 import dgram from 'node:dgram';
 import dns from 'node:dns/promises';
+import { writeFile } from 'node:fs/promises';
 import process from 'node:process';
 import tls from 'node:tls';
 
@@ -11,15 +12,22 @@ function parseArgs(argv) {
     samples: 5,
     timeoutMs: 4000,
     json: false,
+    outFile: '',
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') opts.help = true;
     else if (a === '--json') opts.json = true;
-    else if (a === '--nextdns' && argv[i + 1]) opts.nextDnsId = argv[++i].trim();
-    else if (a.startsWith('--nextdns=')) opts.nextDnsId = a.slice(10).trim();
-    else if (a === '--samples' && argv[i + 1]) {
+    else if ((a === '--out' || a === '-o') && argv[i + 1]) {
+      opts.outFile = argv[++i].trim();
+    } else if (a.startsWith('--out=')) {
+      opts.outFile = a.slice(6).trim();
+    } else if (a === '--nextdns' && argv[i + 1]) {
+      opts.nextDnsId = argv[++i].trim();
+    } else if (a.startsWith('--nextdns=')) {
+      opts.nextDnsId = a.slice(10).trim();
+    } else if (a === '--samples' && argv[i + 1]) {
       const n = Number(argv[++i]);
       if (Number.isFinite(n) && n >= 1 && n <= 50) opts.samples = Math.floor(n);
     }
@@ -272,10 +280,11 @@ Pemakaian:
   node cli/dnslytics.mjs [opsi]
 
 Opsi:
-  --nextdns <id>   Sertakan endpoint NextDNS (Ultra Low, Anycast, Default)
-  --samples <n>    Jumlah tes per resolver (default: 5)
-  --json           Tampilkan hasil dalam format JSON
-  --help           Tampilkan bantuan ini`);
+  --nextdns <id>     Sertakan endpoint NextDNS (Ultra Low, Anycast, Default)
+  --samples <n>      Jumlah tes per resolver (default: 5)
+  --out <file.json>  Simpan hasil JSON UTF-8 untuk divisualisasikan di web DNSlytics
+  --json             Tampilkan hasil JSON langsung ke terminal
+  --help             Tampilkan bantuan ini`);
     return;
   }
 
@@ -406,6 +415,9 @@ Opsi:
   );
 
   const summary = {
+    schemaVersion: 1,
+    createdAt: new Date().toISOString(),
+    samples: opts.samples,
     systemDns: { servers: systemServers, ...sysRes },
     port53Check: {
       hijacked: port53Hijacked,
@@ -415,6 +427,14 @@ Opsi:
     results: allRanked,
     adblockCheck: adblockResults,
   };
+
+  if (opts.outFile) {
+    await writeFile(opts.outFile, `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
+    if (!opts.json) {
+      console.log(`File JSON tersimpan di: ${opts.outFile}`);
+      console.log('Buka tab "CLI" di web DNSlytics lalu unggah file ini untuk melihat grafik & ekspor PNG.\n');
+    }
+  }
 
   if (opts.json) {
     console.log(JSON.stringify(summary, null, 2));

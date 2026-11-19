@@ -65,19 +65,24 @@ npm run dev
 | `npm test` | Run unit tests with Vitest |
 | `npm run cli` | Run the DNSlytics Companion CLI |
 
-### Running the Companion CLI
+### Running the Companion CLI & Visualizing Results in the Web App
 
 ```bash
 # Standard multi-protocol benchmark (Cloudflare, Google, AdGuard, Quad9 + OS DNS)
 npm run cli
 
-# Include your NextDNS Config ID
-npm run cli -- --nextdns <config-id>
+# Save results directly to a UTF-8 JSON file for the Web CLI Visualizer
+node cli/dnslytics.mjs --out hasil-cli.json
 
-# Customize sample count or output JSON
+# Include your NextDNS Config ID and save to JSON
+node cli/dnslytics.mjs --nextdns <config-id> --out hasil-cli.json
+
+# Customize sample count or print JSON to stdout
 node cli/dnslytics.mjs --nextdns <config-id> --samples 10
 node cli/dnslytics.mjs --json
 ```
+
+Open the **CLI** tab in the DNSlytics web app and drop/select `hasil-cli.json` (or paste `--json` output) to view interactive multi-protocol charts, port 53 hijacking status, ad-block verification, and export a clean PNG summary card.
 
 ---
 
