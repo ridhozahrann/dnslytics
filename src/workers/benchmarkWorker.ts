@@ -438,7 +438,7 @@ async function runBenchmark(
             ? generateCacheMissDomain(runSalt, globalSampleIdx + 1000)
             : sharedHitDomain;
 
-        const sample = await executeSingleQuery(
+        let sample = await executeSingleQuery(
           r,
           domain,
           globalSampleIdx,
@@ -448,6 +448,37 @@ async function runBenchmark(
         );
 
         if (isCancelled) return;
+
+        // Handle mid-run CORS failure (e.g., browser upgraded to HTTP/3 via Alt-Svc after warmup)
+        if (!sample.ok && sample.errorKind === 'cors' && transport === 'cors') {
+          if (config.allowNoCorsFallback) {
+            const retryDomain =
+              mode === 'cache-miss'
+                ? generateCacheMissDomain(runSalt, globalSampleIdx + 5000)
+                : sharedHitDomain;
+            const noCorsRetry = await executeSingleQuery(
+              r,
+              retryDomain,
+              globalSampleIdx,
+              mode,
+              'no-cors',
+              config.timeoutMs,
+            );
+            if (isCancelled) return;
+            if (noCorsRetry.ok) {
+              resolverTransport.set(r.id, 'no-cors');
+              progress.perResolver[r.id].transportMode = 'no-cors';
+              sample = noCorsRetry;
+            }
+          } else {
+            resolverTransport.set(r.id, 'blocked');
+            resolverErrorReason.set(
+              r.id,
+              'Resolver tidak mengirim header CORS (Access-Control-Allow-Origin).',
+            );
+            progress.perResolver[r.id].status = 'cors-blocked';
+          }
+        }
 
         resolverSamples.get(r.id)!.push(sample);
         progress.perResolver[r.id].completed += 1;

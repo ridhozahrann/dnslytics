@@ -1,7 +1,8 @@
 {
-  "name": "dnsbenchmark",
+  "name": "dnslytics",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
+  "description": "Browser-based DNS-over-HTTPS (DoH) speed benchmark and multi-protocol companion CLI.",
   "type": "module",
   "bin": {
     "dnslytics": "./cli/dnslytics.mjs"

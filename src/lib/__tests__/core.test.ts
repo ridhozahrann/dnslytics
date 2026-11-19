@@ -95,10 +95,11 @@ describe('validation', () => {
 });
 
 describe('share hash roundtrip', () => {
-  it('encodes and decodes a benchmark summary cleanly', () => {
+  it('encodes and decodes a benchmark summary including networkLabel and adblock tip', () => {
     const sampleRun: BenchmarkRunRecord = {
       id: 'run-1',
       createdAt: '2026-11-17T08:00:00.000Z',
+      networkLabel: 'Wi-Fi Rumah',
       durationMs: 4200,
       hasNextDnsConfig: false,
       config: {
@@ -110,7 +111,7 @@ describe('share hash roundtrip', () => {
       },
       results: [],
       recommendation: {
-        fastestId: null,
+        fastestId: 'cloudflare-1111',
         fastestName: 'Cloudflare 1.1.1.1',
         fastestMedianMs: 14.2,
         runnerUpName: null,
@@ -118,13 +119,17 @@ describe('share hash roundtrip', () => {
         deltaMs: null,
         headline: 'Cloudflare 1.1.1.1 adalah resolver tercepat',
         summary: 'Ringkasan tes',
+        fastestAdBlock: { name: 'AdGuard DNS', medianMs: 22.5 },
       },
     };
     const hash = encodeShareHash(sampleRun);
     const decoded = decodeShareHash(hash);
     expect(decoded).not.toBeNull();
+    expect(decoded?.networkLabel).toBe('Wi-Fi Rumah');
+    expect(decoded?.recommendation.fastestId).toBe('cloudflare-1111');
     expect(decoded?.recommendation.fastestName).toBe('Cloudflare 1.1.1.1');
     expect(decoded?.recommendation.fastestMedianMs).toBe(14.2);
+    expect(decoded?.recommendation.fastestAdBlock?.name).toBe('AdGuard DNS');
   });
 });
 

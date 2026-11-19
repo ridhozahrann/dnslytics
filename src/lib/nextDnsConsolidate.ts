@@ -68,18 +68,20 @@ export function consolidateNextDnsResults(
   recommendation.nextDnsComparison = record.recommendation.nextDnsComparison;
 
   if (
-    mergedSorted[0]?.resolver.id === 'nextdns-unified' &&
+    recommendation.fastestId === 'nextdns-unified' &&
     best.metrics.medianMs !== null
   ) {
-    const runnerUp = mergedSorted[1];
+    const runnerUp = mergedSorted.find(
+      (r) => r.resolver.id !== 'nextdns-unified' && r.metrics.medianMs !== null,
+    );
     const delta =
       runnerUp && runnerUp.metrics.medianMs !== null
         ? Math.round((runnerUp.metrics.medianMs - best.metrics.medianMs) * 100) / 100
         : null;
-    recommendation.headline = 'NextDNS adalah DNS tercepat untuk jaringan Anda';
+    recommendation.headline = 'NextDNS paling cepat untuk internet Anda';
     recommendation.summary =
       runnerUp && delta !== null
-        ? `NextDNS (jalur ${bestLabel}) merespons dalam ${best.metrics.medianMs} ms, lebih cepat ${delta} ms dibanding ${runnerUp.resolver.name}.`
+        ? `NextDNS (jalur ${bestLabel}) merespons dalam ${best.metrics.medianMs} ms — lebih cepat ${delta} ms dibanding ${runnerUp.resolver.name} (${runnerUp.metrics.medianMs} ms).`
         : `NextDNS (jalur ${bestLabel}) merespons dalam ${best.metrics.medianMs} ms.`;
   }
 

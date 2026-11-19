@@ -300,6 +300,7 @@ interface CompactSharePayload {
   d: number;
   m: string;
   n: number;
+  lbl?: string;
   r: Array<{
     id: string;
     nm: string;
@@ -320,10 +321,19 @@ interface CompactSharePayload {
     pct: number;
   }>;
   rec: {
+    fid: string | null;
     hd: string;
     sm: string;
     fn: string | null;
     fm: number | null;
+    ab?: { nm: string; ms: number };
+    nd?: {
+      ul: number | null;
+      ac: number | null;
+      df: number | null;
+      wn: 'ultralow' | 'anycast' | 'default' | null;
+      nt: string;
+    };
   };
 }
 
@@ -354,6 +364,7 @@ export function encodeShareHash(run: BenchmarkRunRecord): string {
     d: Math.round(run.durationMs),
     m: run.config.testMode,
     n: run.config.sampleCount,
+    lbl: run.networkLabel,
     r: run.results.map((res) => ({
       id: res.resolver.id,
       nm: res.resolver.name,
@@ -374,10 +385,26 @@ export function encodeShareHash(run: BenchmarkRunRecord): string {
       pct: res.metrics.successRate,
     })),
     rec: {
+      fid: run.recommendation.fastestId,
       hd: run.recommendation.headline,
       sm: run.recommendation.summary,
       fn: run.recommendation.fastestName,
       fm: run.recommendation.fastestMedianMs,
+      ab: run.recommendation.fastestAdBlock
+        ? {
+            nm: run.recommendation.fastestAdBlock.name,
+            ms: run.recommendation.fastestAdBlock.medianMs,
+          }
+        : undefined,
+      nd: run.recommendation.nextDnsComparison
+        ? {
+            ul: run.recommendation.nextDnsComparison.ultraLowMs,
+            ac: run.recommendation.nextDnsComparison.anycastMs,
+            df: run.recommendation.nextDnsComparison.defaultMs,
+            wn: run.recommendation.nextDnsComparison.winner,
+            nt: run.recommendation.nextDnsComparison.note,
+          }
+        : undefined,
     },
   };
   return `#s=${utf8ToBase64Url(JSON.stringify(payload))}`;
@@ -398,11 +425,11 @@ export function decodeShareHash(hash: string): BenchmarkRunRecord | null {
         variant: item.vr,
         description: '',
         url: '',
-        category: 'public',
+        category: item.id.startsWith('nextdns') ? 'nextdns' : 'public',
         format: 'wire',
         knownCorsSupport: 'unknown',
         tags: [],
-        color: item.cl || '#38bdf8',
+        color: item.cl || '#0a84ff',
       },
       status: item.st,
       statusReason: item.sr,
@@ -425,11 +452,23 @@ export function decodeShareHash(hash: string): BenchmarkRunRecord | null {
       warmupSamples: [],
     }));
 
+    const fallbackWinner = results.find(
+      (r) =>
+        r.status !== 'cors-blocked' &&
+        r.status !== 'failed' &&
+        r.metrics.medianMs !== null,
+    );
+    const fastestId =
+      p.rec.fid !== undefined
+        ? p.rec.fid
+        : fallbackWinner?.resolver.id ?? null;
+
     return {
       id: 'shared',
       createdAt: p.t,
+      networkLabel: p.lbl,
       durationMs: p.d,
-      hasNextDnsConfig: false,
+      hasNextDnsConfig: Boolean(p.rec.nd),
       config: {
         sampleCount: p.n,
         warmupCount: 2,
@@ -439,7 +478,7 @@ export function decodeShareHash(hash: string): BenchmarkRunRecord | null {
       },
       results,
       recommendation: {
-        fastestId: results[0]?.resolver.id ?? null,
+        fastestId,
         fastestName: p.rec.fn,
         fastestMedianMs: p.rec.fm,
         runnerUpName: results[1]?.resolver.name ?? null,
@@ -447,6 +486,18 @@ export function decodeShareHash(hash: string): BenchmarkRunRecord | null {
         deltaMs: null,
         headline: p.rec.hd,
         summary: p.rec.sm,
+        fastestAdBlock: p.rec.ab
+          ? { name: p.rec.ab.nm, medianMs: p.rec.ab.ms }
+          : undefined,
+        nextDnsComparison: p.rec.nd
+          ? {
+              ultraLowMs: p.rec.nd.ul,
+              anycastMs: p.rec.nd.ac,
+              defaultMs: p.rec.nd.df,
+              winner: p.rec.nd.wn,
+              note: p.rec.nd.nt,
+            }
+          : undefined,
       },
     };
   } catch {
