@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { execFile } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import dgram from 'node:dgram';
 import dns from 'node:dns/promises';
@@ -13,6 +14,7 @@ function parseArgs(argv) {
     timeoutMs: 4000,
     json: false,
     outFile: '',
+    webUrl: '',
     help: false,
   };
   for (let i = 0; i < argv.length; i++) {
@@ -23,6 +25,10 @@ function parseArgs(argv) {
       opts.outFile = argv[++i].trim();
     } else if (a.startsWith('--out=')) {
       opts.outFile = a.slice(6).trim();
+    } else if (a === '--web' && argv[i + 1]) {
+      opts.webUrl = argv[++i].trim();
+    } else if (a.startsWith('--web=')) {
+      opts.webUrl = a.slice(6).trim();
     } else if (a === '--nextdns' && argv[i + 1]) {
       opts.nextDnsId = argv[++i].trim();
     } else if (a.startsWith('--nextdns=')) {
@@ -33,6 +39,43 @@ function parseArgs(argv) {
     }
   }
   return opts;
+}
+
+function buildCompactCliHash(summary) {
+  const compact = {
+    v: 1,
+    t: summary.createdAt,
+    n: summary.samples,
+    s: [summary.systemDns.medianMs, summary.systemDns.successPct],
+    p: [
+      summary.port53Check.hijacked ? 1 : 0,
+      summary.port53Check.udpIdServer,
+      summary.port53Check.dotIdServer,
+    ],
+    r: summary.results.map((row) => [
+      row.protocol,
+      row.name,
+      row.medianMs,
+      row.successPct,
+    ]),
+    a: summary.adblockCheck.map((ad) => [
+      ad.name.replace(/^NextDNS\s*\([a-zA-Z0-9]{4,16}\)$/i, 'NextDNS'),
+      ad.domain,
+      ad.blocked ? 1 : 0,
+    ]),
+  };
+  const b64u = Buffer.from(JSON.stringify(compact), 'utf8').toString('base64url');
+  return `#cli=${b64u}`;
+}
+
+function openInBrowser(url) {
+  if (process.platform === 'win32') {
+    execFile('rundll32', ['url.dll,FileProtocolHandler', url], () => {});
+  } else if (process.platform === 'darwin') {
+    execFile('open', [url], () => {});
+  } else {
+    execFile('xdg-open', [url], () => {});
+  }
 }
 
 function encodeDnsQuery(domain, qtype = 1, qclass = 1, id = 1) {
@@ -282,7 +325,8 @@ Pemakaian:
 Opsi:
   --nextdns <id>     Sertakan endpoint NextDNS (Ultra Low, Anycast, Default)
   --samples <n>      Jumlah tes per resolver (default: 5)
-  --out <file.json>  Simpan hasil JSON UTF-8 untuk divisualisasikan di web DNSlytics
+  --web <url>        Langsung buka hasil grafik di browser (mis. https://dnslytics.pages.dev)
+  --out <file.json>  Simpan hasil JSON UTF-8 untuk diunggah manual ke web DNSlytics
   --json             Tampilkan hasil JSON langsung ke terminal
   --help             Tampilkan bantuan ini`);
     return;
@@ -434,6 +478,16 @@ Opsi:
       console.log(`File JSON tersimpan di: ${opts.outFile}`);
       console.log('Buka tab "CLI" di web DNSlytics lalu unggah file ini untuk melihat grafik & ekspor PNG.\n');
     }
+  }
+
+  if (opts.webUrl) {
+    const cleanBase = opts.webUrl.replace(/\/+$/, '');
+    const fullUrl = `${cleanBase}/${buildCompactCliHash(summary)}`;
+    if (!opts.json) {
+      console.log('Membuka hasil grafik di browser...');
+      console.log(`Jika browser tidak terbuka otomatis, buka link ini:\n${fullUrl}\n`);
+    }
+    openInBrowser(fullUrl);
   }
 
   if (opts.json) {

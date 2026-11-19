@@ -7,9 +7,11 @@ import { ProgressPanel } from './components/ProgressPanel';
 import { ResolverConfigurator } from './components/ResolverConfigurator';
 import { ResultsDashboard } from './components/ResultsDashboard';
 import presetsRaw from './data/resolvers.json';
+import { decodeCliShareHash } from './lib/cliImport';
 import { DEFAULT_CACHE_HIT_DOMAINS } from './lib/domains';
 import { decodeShareHash } from './lib/exportShare';
 import { consolidateNextDnsResults } from './lib/nextDnsConsolidate';
+import type { CliReport } from './types/cli';
 import {
   clearHistory,
   deleteHistoryEntry,
@@ -48,7 +50,12 @@ const DEFAULT_PUBLIC_IDS = new Set([
 
 export function App() {
   const [theme, setTheme] = useState<'dark' | 'light'>(() => loadTheme());
-  const [activeTab, setActiveTab] = useState<AppTab>('benchmark');
+  const [cliReportFromHash, setCliReportFromHash] = useState<CliReport | null>(() =>
+    decodeCliShareHash(window.location.hash),
+  );
+  const [activeTab, setActiveTab] = useState<AppTab>(() =>
+    decodeCliShareHash(window.location.hash) ? 'cli' : 'benchmark',
+  );
 
   const [enabledPresetIds, setEnabledPresetIds] = useState<Set<string>>(
     () => new Set(DEFAULT_PUBLIC_IDS),
@@ -109,6 +116,12 @@ export function App() {
 
   useEffect(() => {
     const onHashChange = () => {
+      const cliDecoded = decodeCliShareHash(window.location.hash);
+      if (cliDecoded) {
+        setCliReportFromHash(cliDecoded);
+        setActiveTab('cli');
+        return;
+      }
       const decoded = decodeShareHash(window.location.hash);
       if (decoded) {
         setCurrentRun(decoded);
@@ -480,7 +493,9 @@ export function App() {
 
         {activeTab === 'cli' && (
           <CliVisualizer
+            key={cliReportFromHash?.createdAt ?? 'cli-default'}
             defaultNextDnsId={config.nextDnsConfigId}
+            initialReport={cliReportFromHash}
             isDark={isDark}
           />
         )}

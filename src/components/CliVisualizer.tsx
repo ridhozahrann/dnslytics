@@ -22,6 +22,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Tooltip);
 
 interface CliVisualizerProps {
   defaultNextDnsId?: string;
+  initialReport?: CliReport | null;
   isDark: boolean;
 }
 
@@ -29,10 +30,12 @@ type ProtocolFilter = 'all' | CliProtocol;
 
 export function CliVisualizer({
   defaultNextDnsId = '',
+  initialReport = null,
   isDark,
 }: CliVisualizerProps) {
   const [cliNextDnsId, setCliNextDnsId] = useState(defaultNextDnsId);
-  const [report, setReport] = useState<CliReport | null>(null);
+  const [shellOs, setShellOs] = useState<'windows' | 'unix'>('windows');
+  const [report, setReport] = useState<CliReport | null>(initialReport);
   const [isSample, setIsSample] = useState(false);
   const [parseError, setParseError] = useState<string | null>(null);
   const [showPasteBox, setShowPasteBox] = useState(false);
@@ -56,10 +59,16 @@ export function CliVisualizer({
       : 'bg-black/6 text-[#1d1d1f] hover:bg-black/10'
   }`;
 
+  const origin =
+    typeof window !== 'undefined' && window.location.origin
+      ? window.location.origin
+      : 'https://dnslytics.pages.dev';
   const cleanId = cliNextDnsId.trim();
-  const generatedCmd = cleanId
-    ? `node cli/dnslytics.mjs --nextdns ${cleanId} --out hasil-cli.json`
-    : 'node cli/dnslytics.mjs --out hasil-cli.json';
+  const nextDnsFlag = cleanId ? ` --nextdns ${cleanId}` : '';
+  const generatedCmd =
+    shellOs === 'windows'
+      ? `irm ${origin}/dnslytics.mjs -OutFile dnslytics.mjs; node dnslytics.mjs${nextDnsFlag} --web ${origin}`
+      : `curl -fsSLO ${origin}/dnslytics.mjs && node dnslytics.mjs${nextDnsFlag} --web ${origin}`;
 
   const handleCopyCmd = async () => {
     try {
@@ -440,16 +449,51 @@ export function CliVisualizer({
         <div className={`mt-5 divide-y ${divider}`}>
           {/* Step 1 */}
           <div className="pb-6">
-            <div className="flex items-center gap-2.5">
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#0a84ff] text-xs font-semibold text-white">
-                1
-              </span>
-              <h3 className="text-sm font-semibold">
-                Jalankan Companion CLI di Terminal (Node.js 20+)
-              </h3>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#0a84ff] text-xs font-semibold text-white">
+                  1
+                </span>
+                <h3 className="text-sm font-semibold">
+                  Salin &amp; Tempel 1 Perintah di Terminal (Bisa dari Folder Mana Saja)
+                </h3>
+              </div>
+
+              <div
+                className={`inline-flex rounded-full p-0.5 text-[11px] ${
+                  isDark ? 'bg-black/40' : 'bg-black/6'
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => setShellOs('windows')}
+                  className={`rounded-full px-2.5 py-1 font-medium transition ${
+                    shellOs === 'windows'
+                      ? isDark
+                        ? 'bg-[#2c2c2e] text-white'
+                        : 'bg-white text-[#1d1d1f] shadow-xs'
+                      : muted
+                  }`}
+                >
+                  Windows (PowerShell)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShellOs('unix')}
+                  className={`rounded-full px-2.5 py-1 font-medium transition ${
+                    shellOs === 'unix'
+                      ? isDark
+                        ? 'bg-[#2c2c2e] text-white'
+                        : 'bg-white text-[#1d1d1f] shadow-xs'
+                      : muted
+                  }`}
+                >
+                  Mac / Linux
+                </button>
+              </div>
             </div>
             <p className={`mt-2 pl-8 text-xs leading-relaxed ${muted}`}>
-              Buka terminal di folder proyek <code className="font-mono">dnslytics</code>, lalu jalankan perintah berikut untuk menyimpan hasil ke file <code className="font-mono">hasil-cli.json</code>:
+              Tidak perlu <code className="font-mono">git clone</code> atau pindah folder. Perintah ini langsung mengunduh skrip ringan <code className="font-mono">dnslytics.mjs</code>, menjalankan tes, lalu <strong>membuka grafiknya otomatis di browser Anda</strong> (butuh Node.js 20+).
             </p>
 
             <div className="mt-3 space-y-2.5 pl-8">
@@ -498,8 +542,8 @@ export function CliVisualizer({
               </div>
 
               <p className={`text-[11px] ${muted}`}>
-                Belum punya foldernya? Jalankan dulu{' '}
-                <code className="font-mono">git clone https://github.com/ridhozahrann/dnslytics.git &amp;&amp; cd dnslytics</code>.
+                Atau kalau ingin simpan file JSON saja tanpa membuka browser otomatis, tambahkan{' '}
+                <code className="font-mono">--out hasil-cli.json</code> lalu unggah di Langkah 2.
               </p>
             </div>
           </div>
