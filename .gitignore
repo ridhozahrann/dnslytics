@@ -11,6 +11,8 @@ node_modules
 dist
 dist-ssr
 *.local
+hasil-cli*.json
+/dnslytics.mjs
 
 # Editor directories and files
 .vscode/*
